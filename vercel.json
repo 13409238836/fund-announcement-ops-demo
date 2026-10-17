@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/generate.js": { "maxDuration": 120 },
+    "api/extract-pdf.py": { "maxDuration": 30 }
+  }
+}

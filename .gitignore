@@ -1,0 +1,6 @@
+.env
+.env.*
+!.env.example
+node_modules/
+基金公告运营助手.pdf
+.vercel/

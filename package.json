@@ -1,0 +1,6 @@
+{
+  "name": "fund-announcement-ops-demo",
+  "version": "1.0.0",
+  "private": true,
+  "engines": { "node": ">=20" }
+}
