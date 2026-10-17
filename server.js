@@ -1,7 +1,6 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
-const crypto = require('node:crypto');
 
 const ROOT = __dirname;
 loadEnv(path.join(ROOT, '.env'));
@@ -10,9 +9,6 @@ const API_KEY = process.env.MODEL_API_KEY;
 const MODEL = process.env.MODEL_NAME;
 const AVAILABLE_MODELS = [...new Set([MODEL,...(process.env.MODEL_AVAILABLE_MODELS||'').split(',')].map(x=>x.trim()).filter(Boolean))];
 const BASE_URL = (process.env.MODEL_BASE_URL || 'https://api.deepseek.com').replace(/\/$/, '');
-const ACCESS_USER = process.env.DEMO_ACCESS_USER || '';
-const ACCESS_PASSWORD = process.env.DEMO_ACCESS_PASSWORD || '';
-const IS_PUBLIC_DEPLOY = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
 const PUBLIC_FILES = new Set(['/index.html','/app.js','/styles.css','/exam-materials.js']);
 const BUNDLED_PYTHON = '/Users/jennierubyjane/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3';
 const PDF_PYTHON = process.env.PDF_PYTHON || (fs.existsSync(BUNDLED_PYTHON) ? BUNDLED_PYTHON : 'python3');
@@ -25,22 +21,6 @@ function loadEnv(file){
     const m=line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
     if(m && !(m[1] in process.env)) process.env[m[1]]=m[2].replace(/^(["'])(.*)\1$/,'$2');
   }
-}
-function hasValidBasicAuth(req){
-  if(!ACCESS_USER&&!ACCESS_PASSWORD)return true;
-  const header=req.headers.authorization||'';
-  if(!header.startsWith('Basic '))return false;
-  let decoded;try{decoded=Buffer.from(header.slice(6),'base64').toString('utf8');}catch{return false;}
-  const split=decoded.indexOf(':');if(split<0)return false;
-  const user=Buffer.from(decoded.slice(0,split));const pass=Buffer.from(decoded.slice(split+1));
-  const expectedUser=Buffer.from(ACCESS_USER);const expectedPass=Buffer.from(ACCESS_PASSWORD);
-  return user.length===expectedUser.length&&pass.length===expectedPass.length&&crypto.timingSafeEqual(user,expectedUser)&&crypto.timingSafeEqual(pass,expectedPass);
-}
-function hasValidApiAuth(req){
-  if(!ACCESS_PASSWORD)return !IS_PUBLIC_DEPLOY;
-  const header=req.headers.authorization||'';if(!header.startsWith('Bearer '))return false;
-  const supplied=Buffer.from(header.slice(7));const expected=Buffer.from(ACCESS_PASSWORD);
-  return supplied.length===expected.length&&crypto.timingSafeEqual(supplied,expected);
 }
 function json(res,status,data){res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(data));}
 function readBody(req,maxBytes=20*1024*1024){if(req.body!==undefined){if(typeof req.body==='string'){try{return Promise.resolve(JSON.parse(req.body||'{}'));}catch{return Promise.reject(new Error('请求格式无效'));}}if(req.body&&typeof req.body==='object')return Promise.resolve(req.body);return Promise.reject(new Error('请求格式无效'));}return new Promise((resolve,reject)=>{let data='';req.on('data',chunk=>{data+=chunk;if(data.length>maxBytes)reject(new Error('请求内容过大'));});req.on('end',()=>{try{resolve(JSON.parse(data||'{}'));}catch{reject(new Error('请求格式无效'));}});req.on('error',reject);});}
@@ -170,13 +150,9 @@ async function generate(req,res){
 async function handleRequest(req,res){
   res.setHeader('X-Content-Type-Options','nosniff');
   res.setHeader('Referrer-Policy','no-referrer');
-  if(ACCESS_USER&&!hasValidBasicAuth(req)){
-    res.writeHead(401,{'www-authenticate':'Basic realm="Fund Announcement Demo", charset="UTF-8"','cache-control':'no-store'});res.end('Authentication required');return;
-  }
   const url=new URL(req.url,'http://localhost');
-  if(req.method==='GET'&&url.pathname==='/api/status'){json(res,200,{configured:Boolean(API_KEY&&MODEL),model:MODEL||null,models:API_KEY&&MODEL?AVAILABLE_MODELS:[],accessRequired:Boolean(ACCESS_PASSWORD)||IS_PUBLIC_DEPLOY});return;}
+  if(req.method==='GET'&&url.pathname==='/api/status'){json(res,200,{configured:Boolean(API_KEY&&MODEL),model:MODEL||null,models:API_KEY&&MODEL?AVAILABLE_MODELS:[],accessRequired:false});return;}
   if(url.pathname==='/api/generate'||url.pathname==='/api/extract-pdf'){
-    if(!hasValidApiAuth(req)){json(res,401,{error:ACCESS_PASSWORD?'演示访问口令错误，请重新输入。':'公网环境缺少演示访问口令配置。'});return;}
     if(req.method==='POST'&&url.pathname==='/api/generate'){await generate(req,res);return;}
     if(req.method==='POST'&&url.pathname==='/api/extract-pdf'){await extractPdf(req,res);return;}
   }
@@ -188,9 +164,6 @@ async function handleRequest(req,res){
 }
 module.exports={handleRequest};
 if(require.main===module){
-  if(IS_PUBLIC_DEPLOY&&(!ACCESS_USER||!ACCESS_PASSWORD)){
-    console.error('生产模式必须配置 DEMO_ACCESS_USER 和 DEMO_ACCESS_PASSWORD。');process.exit(1);
-  }
   const server=http.createServer(handleRequest);
   server.listen(PORT,'127.0.0.1',()=>console.log(`基金公告运营助手已启动：http://localhost:${PORT}`));
 }

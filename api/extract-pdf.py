@@ -1,9 +1,7 @@
 from http.server import BaseHTTPRequestHandler
 from io import BytesIO
 import base64
-import hmac
 import json
-import os
 
 MAX_BODY_BYTES = 4_400_000
 
@@ -19,13 +17,6 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
-        expected = os.environ.get('DEMO_ACCESS_PASSWORD', '')
-        supplied = self.headers.get('Authorization', '')
-        if not expected and (os.environ.get('VERCEL') == '1' or os.environ.get('NODE_ENV') == 'production'):
-            return self._json(503, {'error': '公网环境缺少演示访问口令配置。'})
-        if expected and not hmac.compare_digest(supplied, 'Bearer ' + expected):
-            return self._json(401, {'error': '演示访问口令错误，请重新输入。'})
-
         try:
             size = int(self.headers.get('Content-Length', '0'))
             if size <= 0 or size > MAX_BODY_BYTES:

@@ -17,8 +17,8 @@
 
 项目已提供 Vercel Functions 入口：`/api/status`、`/api/generate` 使用 Node.js Function，`/api/extract-pdf` 使用 Python Function。普通 HTML/CSS/JS 由 Vercel 作为静态资源发布。
 
-1. 将代码放入 **私有** GitHub 仓库，并将仓库关联到 Vercel。不要提交 `.env`、真实 API Key 或任何访问口令；`.gitignore` 已排除 `.env`。
-2. 在 Vercel 项目设置中添加环境变量：`MODEL_BASE_URL`、`MODEL_API_KEY`、`MODEL_NAME`、`MODEL_AVAILABLE_MODELS`、`DEMO_ACCESS_PASSWORD`。API Key 标记为 Sensitive；访问口令使用随机长密码。公网接口在没有访问口令时会拒绝生成请求。
+1. 将代码放入 GitHub 仓库，并将仓库关联到 Vercel。不要提交 `.env` 或真实 API Key；`.gitignore` 已排除 `.env`。
+2. 在 Vercel 项目设置中添加模型环境变量：`MODEL_BASE_URL`、`MODEL_API_KEY`、`MODEL_NAME`、`MODEL_AVAILABLE_MODELS`。将 API Key 标记为 Sensitive。网站无需额外用户名或密码即可访问。
 3. 框架预设选 Other；无需 Build Command，静态输出目录使用项目根目录。Python Function 依赖由 `requirements.txt` 安装。
 4. 将 Vercel 提供的自定义域名 DNS 记录添加到域名 DNS 控制台。Vercel 为绑定域名配置 HTTPS 后即可访问。
 5. GitHub 每次推送会触发新部署；生产分支（通常为 `main`）更新后，绑定域名会更新到新版本。每次修改 Vercel 环境变量后也要重新部署。
